@@ -15,6 +15,7 @@
  */
 
 import { createServer, type Server as HttpServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { existsSync, createReadStream, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, extname } from "node:path";
 import { homedir } from "node:os";
@@ -207,6 +208,43 @@ export class HermesAdapter implements HostAdapter {
 
   private handleHttp(req: IncomingMessage, res: ServerResponse): void {
     const url = req.url ?? "/";
+
+    // Public cloud deployment guard. Never expose RPC / agent tools without access control.
+    const accessToken = process.env.GODMODE_ACCESS_TOKEN;
+    if (accessToken) {
+      
+      const cookie = (req.headers.cookie ?? "").split(";").map(s => s.trim()).find(s => s.startsWith("godmode_access="))?.slice("godmode_access=".length) ?? "";
+      const eq = (a: string, b: string): boolean => {
+        const aa = Buffer.from(a), bb = Buffer.from(b);
+        return aa.length === bb.length && timingSafeEqual(aa, bb);
+      };
+      if (url.split("?")[0] === "/godmode/login" && req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+        res.end('<!doctype html><html><meta name="viewport" content="width=device-width,initial-scale=1"><title>GodMode Login</title><body style="font:16px system-ui;background:#111;color:#fff;max-width:380px;margin:12vh auto;padding:24px"><h1>GodMode</h1><p>Private Cloud-Zugriff</p><form method="post"><input name="token" type="password" placeholder="Zugangsschlüssel" required style="padding:12px;width:95%"><button style="margin-top:16px;padding:12px">Anmelden</button></form></body></html>');
+        return;
+      }
+      if (url.split("?")[0] === "/godmode/login" && req.method === "POST") {
+        let body = "";
+        req.on("data", part => { body += part.toString(); if (body.length > 4096) req.destroy(); });
+        req.on("end", () => {
+          const candidate = new URLSearchParams(body).get("token") ?? "";
+          if (!eq(candidate, accessToken)) { res.writeHead(403); res.end("Invalid access key"); return; }
+          res.writeHead(303, { Location: "/godmode", "Set-Cookie": `godmode_access=${encodeURIComponent(accessToken)}; HttpOnly; Secure; SameSite=Strict; Path=/`, "Cache-Control": "no-store" });
+          res.end();
+        });
+        return;
+      }
+      if (url === "/health" || url === "/godmode/health") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ status: "ok" }));
+        return;
+      }
+      if (!eq(decodeURIComponent(cookie), accessToken)) {
+        res.writeHead(303, { Location: "/godmode/login", "Cache-Control": "no-store" });
+        res.end();
+        return;
+      }
+    }
 
     // CORS
     res.setHeader("Access-Control-Allow-Origin", "*");
