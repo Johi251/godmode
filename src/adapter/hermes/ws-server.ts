@@ -12,6 +12,7 @@
  */
 
 import { WebSocketServer, type WebSocket } from "ws";
+import { timingSafeEqual } from "node:crypto";
 import type { Server as HttpServer } from "node:http";
 import type { StandaloneRequestHandler, AdapterLogger } from "../types.js";
 
@@ -59,7 +60,17 @@ export class GodModeWsServer {
 
   /** Attach to an existing HTTP server. */
   attach(server: HttpServer): void {
-    this.wss = new WebSocketServer({ server });
+    this.wss = new WebSocketServer({ server, verifyClient: ({ req }, done) => {
+      const token = process.env.GODMODE_ACCESS_TOKEN;
+      if (!token) { done(true); return; }
+      const cookie = (req.headers.cookie ?? "").split(";").map(v => v.trim()).find(v => v.startsWith("godmode_access="))?.slice(15) ?? "";
+      const presented = Buffer.from(decodeURIComponent(cookie));
+      const expected = Buffer.from(token);
+      const origin = req.headers.origin;
+      const host = req.headers.host;
+      const allowedOrigin = !!origin && !!host && new URL(origin).host === host && new URL(origin).protocol === "https:";
+      done(allowedOrigin && presented.length === expected.length && timingSafeEqual(presented, expected), 401, "Unauthorized");
+    } });
 
     this.wss.on("connection", (ws) => {
       this.clients.add(ws);
