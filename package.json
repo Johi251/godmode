@@ -119,5 +119,6 @@
     "extensions": [
       "./dist/index.js"
     ]
-  }
+  },
+  "packageManager": "pnpm@10.28.2"
 }
