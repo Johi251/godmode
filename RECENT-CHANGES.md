@@ -4,6 +4,15 @@ This file tracks recent development changes so the ally and other agents can qui
 
 ---
 
+## Fix: Free OpenRouter chat endpoints and Windows build (2026-10-14)
+
+- Streaming and synchronous standalone chat now use `/api/v1/chat/completions` for OpenRouter instead of duplicating `/v1`. Local Hermes retains `/v1/chat/completions`.
+- Five regression cases cover both providers and both response modes, plus rejection of paid OpenRouter models.
+- Build asset copying uses Node filesystem APIs so the complete build also runs on Windows.
+- Verified: regression tests, typecheck, full Windows build, and real free-model synchronous/streaming responses. No production deployment is included.
+
+---
+
 ## Fix: OSS Surface Cleanup + Guard Hardening (2026-03-24)
 
 ### What Landed
