@@ -53,7 +53,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "pnpm build:ui && pnpm build:code && pnpm bundle:ui",
+    "build": "pnpm rebuild better-sqlite3 && pnpm build:ui && pnpm build:code && pnpm bundle:ui",
     "build:code": "tsup",
     "build:ui": "vite build --config ui/vite.config.ts",
     "bundle:ui": "node scripts/bundle-ui.mjs",
