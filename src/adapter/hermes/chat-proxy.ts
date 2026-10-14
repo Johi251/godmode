@@ -138,8 +138,28 @@ export class HermesChatProxy {
     this.getWorkspaceContext = async () => context;
   }
 
-  /** Check if Hermes API is reachable. */
+  /** OpenRouter is optional and explicitly restricted to a free model. */
+  private openRouterConfig(): { url: string; key: string; model: string } | null {
+    const key = process.env.OPENROUTER_API_KEY?.trim();
+    if (!key) return null;
+    const model = process.env.OPENROUTER_FREE_MODEL?.trim() || "openrouter/free";
+    if (model !== "openrouter/free" && !model.endsWith(":free")) {
+      throw new Error("Only OpenRouter free models are permitted (use openrouter/free or a :free model).");
+    }
+    return { url: "https://openrouter.ai/api/v1", key, model };
+  }
+
+  /** Check whether the selected chat backend is configured and reachable. */
   async healthCheck(): Promise<boolean> {
+    const openrouter = this.openRouterConfig();
+    if (openrouter) {
+      try {
+        const res = await fetch(`${openrouter.url}/models`, { signal: AbortSignal.timeout(5000) });
+        return res.ok;
+      } catch {
+        return false;
+      }
+    }
     try {
       const res = await fetch(`${this.hermesUrl}/health`, { signal: AbortSignal.timeout(5000) });
       return res.ok;
@@ -205,7 +225,10 @@ export class HermesChatProxy {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (this.hermesApiKey) {
+    const openrouter = this.openRouterConfig();
+    if (openrouter) {
+      headers["Authorization"] = `Bearer ${openrouter.key}`;
+    } else if (this.hermesApiKey) {
       headers["Authorization"] = `Bearer ${this.hermesApiKey}`;
     }
 
@@ -218,11 +241,11 @@ export class HermesChatProxy {
     const abortTimeout = setTimeout(() => controller.abort(), 120_000);
 
     try {
-      const res = await fetch(`${this.hermesUrl}/v1/chat/completions`, {
+      const res = await fetch(`${openrouter?.url ?? this.hermesUrl}/v1/chat/completions`, {
         method: "POST",
         headers,
         body: JSON.stringify({
-          model: "hermes-agent",
+          model: openrouter?.model ?? "hermes-agent",
           messages,
           stream: true,
         }),
@@ -231,7 +254,7 @@ export class HermesChatProxy {
 
       if (!res.ok) {
         const body = await res.text();
-        throw new Error(`Hermes API error ${res.status}: ${body}`);
+        throw new Error(`Chat provider HTTP ${res.status}: ${body.slice(0, 1000)}`);
       }
 
       if (!res.body) {
@@ -372,15 +395,18 @@ export class HermesChatProxy {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (this.hermesApiKey) {
+    const openrouter = this.openRouterConfig();
+    if (openrouter) {
+      headers["Authorization"] = `Bearer ${openrouter.key}`;
+    } else if (this.hermesApiKey) {
       headers["Authorization"] = `Bearer ${this.hermesApiKey}`;
     }
 
-    const res = await fetch(`${this.hermesUrl}/v1/chat/completions`, {
+    const res = await fetch(`${openrouter?.url ?? this.hermesUrl}/v1/chat/completions`, {
       method: "POST",
       headers,
       body: JSON.stringify({
-        model: "hermes-agent",
+        model: openrouter?.model ?? "hermes-agent",
         messages,
         stream: false,
       }),
