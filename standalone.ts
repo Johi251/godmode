@@ -10,7 +10,8 @@
  *   node dist/standalone.js [--port 3333] [--hermes-url http://localhost:8642]
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { HermesAdapter } from "./src/adapter/hermes/adapter.js";
@@ -110,6 +111,10 @@ function registerOcStubs(adapter: { registerMethod: (name: string, handler: Stan
 
 async function main() {
   const { port, hermesUrl, hermesApiKey } = parseArgs();
+
+  // The Render runtime may start without a pre-created GodMode home directory.
+  // Create it before registering services that write secrets and identity files.
+  mkdirSync(process.env.GODMODE_ROOT ?? join(homedir(), "godmode"), { recursive: true });
 
   // ── API Key Pre-flight ────────────────────────────────────────
   // Check for an Anthropic API key early so users get a clear, actionable
