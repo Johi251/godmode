@@ -62,5 +62,12 @@ async function checkEndpoint(stream: boolean, endpoint: string, model: string): 
   expect(fetchMock).toHaveBeenCalledOnce();
   const [url, options] = fetchMock.mock.calls[0];
   expect(url).toBe(endpoint);
-  expect(JSON.parse(options.body)).toMatchObject({ model, stream });
+  const body = JSON.parse(options.body);
+  expect(body).toMatchObject({ model, stream });
+  if (model === "openrouter/free") {
+    expect(body.provider).toEqual({ max_price: { prompt: 0, completion: 0 }, allow_fallbacks: false });
+  } else {
+    expect(body).not.toHaveProperty("provider");
+  }
 }
+
