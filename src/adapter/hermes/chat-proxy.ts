@@ -241,13 +241,14 @@ export class HermesChatProxy {
     const abortTimeout = setTimeout(() => controller.abort(), 120_000);
 
     try {
-      const res = await fetch(`${openrouter?.url ?? this.hermesUrl}/v1/chat/completions`, {
+      const res = await fetch(openrouter ? `${openrouter.url}/chat/completions` : `${this.hermesUrl}/v1/chat/completions`, {
         method: "POST",
         headers,
         body: JSON.stringify({
           model: openrouter?.model ?? "hermes-agent",
           messages,
           stream: true,
+          ...(openrouter ? { provider: { max_price: { prompt: 0, completion: 0 }, allow_fallbacks: false } } : {}),
         }),
         signal: controller.signal,
       });
@@ -402,13 +403,14 @@ export class HermesChatProxy {
       headers["Authorization"] = `Bearer ${this.hermesApiKey}`;
     }
 
-    const res = await fetch(`${openrouter?.url ?? this.hermesUrl}/v1/chat/completions`, {
+    const res = await fetch(openrouter ? `${openrouter.url}/chat/completions` : `${this.hermesUrl}/v1/chat/completions`, {
       method: "POST",
       headers,
       body: JSON.stringify({
         model: openrouter?.model ?? "hermes-agent",
         messages,
         stream: false,
+        ...(openrouter ? { provider: { max_price: { prompt: 0, completion: 0 }, allow_fallbacks: false } } : {}),
       }),
     });
 
@@ -459,3 +461,4 @@ export class HermesChatProxy {
     }));
   }
 }
+

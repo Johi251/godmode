@@ -76,18 +76,17 @@
     "@noble/ed25519": "3.0.0",
     "better-sqlite3": "11.10.0",
     "chokidar": "4.0.3",
-    "dompurify": "3.3.3",
+    "dompurify": "3.4.16",
     "json5": "2.2.3",
     "lit": "3.3.2",
     "marked": "17.0.3",
-    "mem0ai": "^2.3.0",
-    "ws": "8.19.0"
+    "ws": "8.21.0"
   },
   "devDependencies": {
     "@browserbasehq/stagehand": "^3.2.0",
     "@types/node": "^24.3.3",
     "@types/ws": "^8.18.1",
-    "openclaw": "^2026.3.22",
+    "openclaw": "2026.3.23",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
